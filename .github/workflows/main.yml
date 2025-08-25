@@ -1,20 +1,21 @@
-name: Build and Push Docker Image to ACR
+name: Build, Push and Deploy to ACK
 
-# 触发器：当有代码push到main分支时，自动运行此流水线
+# 触发器：当有代码push到main分支时
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest # 使用GitHub提供的最新版Ubuntu虚拟机来执行任务
+  build-push-and-deploy:
+    runs-on: ubuntu-latest # 使用GitHub提供的虚拟机
 
     steps:
-    # 第一步：检出我们的代码
+    # ------------------ CI 环节 (我们已完成) ------------------
+    # 1. 检出代码
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # 第二步：登录到阿里云ACR
+    # 2. 登录到阿里云ACR
     - name: Login to ACR
       uses: docker/login-action@v2
       with:
@@ -22,10 +23,28 @@ jobs:
         username: ${{ secrets.ACR_USERNAME }}
         password: ${{ secrets.ACR_PASSWORD }}
 
-    # 第三步：构建并推送Docker镜像
+    # 3. 构建并推送Docker镜像
     - name: Build and push Docker image
+      id: build-image # (新!) 给这一步起个ID，方便后面引用它的输出
       uses: docker/build-push-action@v4
       with:
         context: .
         push: true
         tags: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/my-cicd-demo:${{ github.sha }}
+
+    # ------------------ CD 环节 (全新内容!) ------------------
+    # 4. 配置kubectl的“指挥部通行证”
+    - name: Set up Kubeconfig
+      uses: azure/k8s-set-context@v3
+      with:
+        method: kubeconfig
+        kubeconfig: ${{ secrets.ACK_KUBECONFIG }}
+
+    # 5. 部署到ACK集群
+    - name: Deploy to ACK
+      uses: azure/k8s-deploy@v4
+      with:
+        # (关键!) 使用kubectl set image命令，来触发滚动更新
+        # 它告诉K8s去更新名为nginx-deployment的部署
+        # 将其中名为nginx的容器，使用的镜像，更新为我们刚刚构建的新镜像
+        command: set image deployment/nginx-deployment nginx=${{ steps.build-image.outputs.imageid }}
