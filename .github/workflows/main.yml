@@ -1,0 +1,31 @@
+name: Build and Push Docker Image to ACR
+
+# 触发器：当有代码push到main分支时，自动运行此流水线
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest # 使用GitHub提供的最新版Ubuntu虚拟机来执行任务
+
+    steps:
+    # 第一步：检出我们的代码
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # 第二步：登录到阿里云ACR
+    - name: Login to ACR
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ secrets.ACR_REGISTRY }}
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+
+    # 第三步：构建并推送Docker镜像
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/my-cicd-demo:${{ github.sha }}
