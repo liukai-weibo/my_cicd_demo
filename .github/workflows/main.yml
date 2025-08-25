@@ -32,7 +32,9 @@ jobs:
         push: true
         tags: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/my-cicd-demo:${{ github.sha }}
 
-    # ------------------ CD 环节 (全新内容!) ------------------
+ # ... (前面 build-push-and-deploy 和 Set up Kubeconfig 的步骤保持不变) ...
+
+    # ------------------ CD 环节 (修正版!) ------------------
     # 4. 配置kubectl的“指挥部通行证”
     - name: Set up Kubeconfig
       uses: azure/k8s-set-context@v3
@@ -40,11 +42,10 @@ jobs:
         method: kubeconfig
         kubeconfig: ${{ secrets.ACK_KUBECONFIG }}
 
-    # 5. 部署到ACK集群
+    # 5. 部署到ACK集群 (使用run命令，而不是Action)
     - name: Deploy to ACK
-      uses: azure/k8s-deploy@v4
-      with:
-        # (关键!) 使用kubectl set image命令，来触发滚动更新
-        # 它告诉K8s去更新名为nginx-deployment的部署
-        # 将其中名为nginx的容器，使用的镜像，更新为我们刚刚构建的新镜像
-        command: set image deployment/nginx-deployment nginx=${{ steps.build-image.outputs.imageid }}
+      run: |
+        echo "Deploying image ${{ steps.build-image.outputs.imageid }}"
+        kubectl set image deployment/nginx-deployment nginx=${{ steps.build-image.outputs.imageid }}
+        echo "Waiting for rollout to complete..."
+        kubectl rollout status deployment/nginx-deployment
