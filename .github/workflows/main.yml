@@ -42,10 +42,16 @@ jobs:
         method: kubeconfig
         kubeconfig: ${{ secrets.ACK_KUBECONFIG }}
 
-    # 5. 部署到ACK集群 (使用run命令，而不是Action)
+   # 5. 部署到ACK集群 (最终修正版)
     - name: Deploy to ACK
       run: |
-        echo "Deploying image ${{ steps.build-image.outputs.imageid }}"
-        kubectl set image deployment/nginx-deployment nginx=${{ steps.build-image.outputs.imageid }}
-        echo "Waiting for rollout to complete..."
+        # 我们在这里，重新构建出那个我们推送到ACR时，使用的完整的、正确的镜像“姓名”
+        export IMAGE_WITH_TAG="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/my-cicd-demo:${{ github.sha }}"
+        
+        echo "Deploying to ACK cluster with new image tag: ${IMAGE_WITH_TAG}"
+        
+        # 使用这个正确的“姓名”去更新部署
+        kubectl set image deployment/nginx-deployment nginx=${IMAGE_WITH_TAG}
+        
+        echo "Waiting for deployment rollout to finish..."
         kubectl rollout status deployment/nginx-deployment
