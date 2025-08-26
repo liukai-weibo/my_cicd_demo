@@ -17,7 +17,8 @@ jobs:
 
   # (新!) 增加这一步，用来打印出工作目录的文件列表
     - name: List files in workspace
-       run: ls -R
+      run: ls -R
+
     # 2. 登录到阿里云ACR
     - name: Login to ACR
       uses: docker/login-action@v2
