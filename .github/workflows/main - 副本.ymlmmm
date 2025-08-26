@@ -37,3 +37,25 @@ jobs:
         tags: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/my-cicd-demo:${{ github.sha }}
         no-cache: true 
  # ... (前面 build-push-and-deploy 和 Set up Kubeconfig 的步骤保持不变) ...
+
+    # ------------------ CD 环节 (修正版!) ------------------
+    # 4. 配置kubectl的“指挥部通行证”
+    - name: Set up Kubeconfig
+      uses: azure/k8s-set-context@v3
+      with:
+        method: kubeconfig
+        kubeconfig: ${{ secrets.ACK_KUBECONFIG }}
+
+   # 5. 部署到ACK集群 (最终修正版)
+    - name: Deploy to ACK
+      run: |
+        # 我们在这里，重新构建出那个我们推送到ACR时，使用的完整的、正确的镜像“姓名”
+        export IMAGE_WITH_TAG="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/my-cicd-demo:${{ github.sha }}"
+        
+        echo "Deploying to ACK cluster with new image tag: ${IMAGE_WITH_TAG}"
+        
+        # 使用这个正确的“姓名”去更新部署
+        kubectl set image deployment/nginx-deployment nginx=${IMAGE_WITH_TAG}
+        
+        echo "Waiting for deployment rollout to finish..."
+        kubectl rollout status deployment/nginx-deployment
