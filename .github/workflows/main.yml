@@ -35,7 +35,7 @@ jobs:
         context: .
         push: true
         tags: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/my-cicd-demo:${{ github.sha }}
-
+        no-cache: true 
  # ... (前面 build-push-and-deploy 和 Set up Kubeconfig 的步骤保持不变) ...
 
     # ------------------ CD 环节 (修正版!) ------------------
